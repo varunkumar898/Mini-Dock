@@ -1,11 +1,13 @@
 //! `alphen-runtime`: Linux container runtime execution, namespaces, mounts, and isolation.
 
+pub mod cgroups;
 pub mod container;
 pub mod mounts;
 pub mod namespaces;
 pub mod overlay;
 pub mod pivot;
 
+pub use cgroups::{parse_memory_str, CgroupManager, ResourceLimits};
 pub use container::{run_container, ContainerConfig};
 pub use mounts::{mount_virtual_filesystems, mount_volumes_and_tmpfs, VolumeMount};
 pub use namespaces::{setup_namespaces, NamespaceConfig};

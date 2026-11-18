@@ -148,9 +148,29 @@ pub struct RunArgs {
     #[arg(long = "memory")]
     pub memory: Option<String>,
 
+    /// Swap memory limit (e.g. 128m)
+    #[arg(long = "memory-swap")]
+    pub memory_swap: Option<String>,
+
     /// Number of CPUs (e.g. 1.5)
     #[arg(long = "cpus")]
     pub cpus: Option<f32>,
+
+    /// CPU shares (relative weight, e.g. 1024)
+    #[arg(long = "cpu-shares")]
+    pub cpu_shares: Option<u64>,
+
+    /// Tune container pids limit
+    #[arg(long = "pids-limit")]
+    pub pids_limit: Option<u32>,
+
+    /// Limit read rate (bytes per second) from a device
+    #[arg(long = "device-read-bps")]
+    pub device_read_bps: Option<String>,
+
+    /// Limit write rate (bytes per second) to a device
+    #[arg(long = "device-write-bps")]
+    pub device_write_bps: Option<String>,
 
     /// Automatically remove the container when it exits
     #[arg(long = "rm")]
@@ -285,6 +305,25 @@ fn run_app(cli: Cli) -> Result<()> {
                 volume_mounts.push(alphen_runtime::VolumeMount::parse(v)?);
             }
 
+            let memory_bytes = match &args.memory {
+                Some(m) => Some(alphen_runtime::parse_memory_str(m)?),
+                None => None,
+            };
+            let memory_swap_bytes = match &args.memory_swap {
+                Some(m) => Some(alphen_runtime::parse_memory_str(m)?),
+                None => None,
+            };
+
+            let limits = alphen_runtime::ResourceLimits {
+                memory_bytes,
+                memory_swap_bytes,
+                cpus: args.cpus,
+                cpu_shares: args.cpu_shares,
+                pids_limit: args.pids_limit,
+                device_read_bps: args.device_read_bps.clone(),
+                device_write_bps: args.device_write_bps.clone(),
+            };
+
             let config = ContainerConfig {
                 id: container_id,
                 image_ref,
@@ -293,6 +332,7 @@ fn run_app(cli: Cli) -> Result<()> {
                 workdir: args.workdir.clone(),
                 volumes: volume_mounts,
                 tmpfs: args.tmpfs.clone(),
+                limits,
                 read_only: args.read_only,
                 hostname: args.hostname.clone(),
                 rm: args.rm,

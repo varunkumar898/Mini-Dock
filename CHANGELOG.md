@@ -5,6 +5,18 @@ All notable changes to `alphen-box` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-11-18
+
+### Added - Milestone 5: cgroups v2 Limits
+- Linux cgroups v2 resource management (`alphen-runtime::cgroups`):
+  - Memory controls: `--memory` (`memory.max` in bytes) and `--memory-swap` (`memory.swap.max`).
+  - CPU quotas & weights: `--cpus` (`cpu.max` quota/period calculation) and `--cpu-shares` (mapped onto `cpu.weight` 1-10000).
+  - Task count controls: `--pids-limit` (`pids.max`).
+  - Block I/O rate limits: `--device-read-bps` and `--device-write-bps` (`io.max`).
+  - Automatic subtree controller activation (`+cpu +memory +pids +io`).
+  - Automatic process attachment (`cgroup.procs`) and cgroup directory cleanup on exit.
+- Release binary size measured at **1.63 MB**, well within the 6 MB budget.
+
 ## [0.4.0] - 2026-11-18
 
 ### Added - Milestone 4: Namespaces and Mounts

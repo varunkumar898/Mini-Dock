@@ -1,5 +1,6 @@
 //! Container lifecycle execution and process supervision.
 
+use crate::cgroups::{CgroupManager, ResourceLimits};
 use crate::mounts::{mount_virtual_filesystems, mount_volumes_and_tmpfs, VolumeMount};
 use crate::namespaces::{setup_namespaces, NamespaceConfig};
 #[cfg(target_os = "linux")]
@@ -26,6 +27,8 @@ pub struct ContainerConfig {
     pub volumes: Vec<VolumeMount>,
     /// Tmpfs mounts (--tmpfs /path).
     pub tmpfs: Vec<String>,
+    /// Resource limits (cgroups v2).
+    pub limits: ResourceLimits,
     /// Mount root filesystem as read-only.
     pub read_only: bool,
     /// Hostname override.
@@ -80,6 +83,11 @@ pub fn run_container(config: &ContainerConfig, store: &ImageStore) -> Result<i32
     };
     setup_namespaces(&ns_config)?;
 
+    // Set up cgroups v2 resource limits
+    let cgroup = CgroupManager::new(&config.id);
+    cgroup.create()?;
+    cgroup.apply_limits(&config.limits)?;
+
     // Mount container virtual filesystems and volumes
     mount_virtual_filesystems(&rootfs_dir, config.read_only)?;
     mount_volumes_and_tmpfs(&rootfs_dir, &config.volumes, &config.tmpfs)?;
@@ -92,7 +100,15 @@ pub fn run_container(config: &ContainerConfig, store: &ImageStore) -> Result<i32
         resolved_command
     );
 
-    let exit_code = execute_in_rootfs(&rootfs_dir, &resolved_command, config, &stored_image)?;
+    let exit_code = execute_in_rootfs(
+        &rootfs_dir,
+        &resolved_command,
+        config,
+        &stored_image,
+        &cgroup,
+    )?;
+
+    let _ = cgroup.cleanup();
 
     if config.rm {
         log::debug!("Removing container workspace for {}", config.id);
@@ -124,6 +140,7 @@ fn execute_in_rootfs(
     cmd_args: &[String],
     config: &ContainerConfig,
     stored: &StoredImage,
+    cgroup: &CgroupManager,
 ) -> Result<i32> {
     if cmd_args.is_empty() {
         return Err(AlphenError::Runtime("No command specified to run".into()));
@@ -134,10 +151,11 @@ fn execute_in_rootfs(
 
     #[cfg(target_os = "linux")]
     {
-        execute_linux(rootfs_dir, program, args, config, stored)
+        execute_linux(rootfs_dir, program, args, config, stored, cgroup)
     }
     #[cfg(not(target_os = "linux"))]
     {
+        let _ = cgroup;
         execute_windows_fallback(rootfs_dir, program, args, config, stored)
     }
 }
@@ -149,6 +167,7 @@ fn execute_linux(
     args: &[String],
     config: &ContainerConfig,
     stored: &StoredImage,
+    cgroup: &CgroupManager,
 ) -> Result<i32> {
     use std::ffi::CString;
 
@@ -206,6 +225,7 @@ fn execute_linux(
     }
 
     // --- PARENT PROCESS ---
+    let _ = cgroup.attach(pid as u32);
     let mut status: libc::c_int = 0;
     // SAFETY: waitpid on spawned child
     let waited = unsafe { libc::waitpid(pid, &mut status, 0) };
@@ -306,6 +326,7 @@ mod tests {
             workdir: None,
             volumes: vec![],
             tmpfs: vec![],
+            limits: ResourceLimits::default(),
             read_only: false,
             hostname: None,
             rm: false,
