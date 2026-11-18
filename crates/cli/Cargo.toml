@@ -9,6 +9,10 @@ license.workspace = true
 name = "alphen-box"
 path = "src/main.rs"
 
+[[bin]]
+name = "docker"
+path = "src/bin/docker.rs"
+
 [dependencies]
 alphen-common.workspace = true
 alphen-core.workspace = true

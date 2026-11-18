@@ -5,6 +5,23 @@ All notable changes to `alphen-box` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-11-18
+
+### Added - Milestone 10: Alphen OS Integration
+- Docker CLI compatibility wrapper (`docker` binary):
+  - Provides drop-in compatibility for Docker commands and scripts.
+  - Warns on unsupported Docker flags instead of failing silently.
+- Boot initialization script (`packaging/alphen-box-setup.sh`):
+  - Automatically loads `overlay`, `br_netfilter`, and `tun` kernel modules.
+  - Configures `net.ipv4.ip_forward=1` and prepares `/var/lib/alphen-box/` and `/run/alphen-box/`.
+- Systemd service unit (`packaging/alphen-box.service`):
+  - Manages boot initialization and post-reboot container state reconciliation.
+- Alphen OS packaging pipelines:
+  - Alpine/Alphen OS APK specification (`packaging/APKBUILD`).
+  - Debian package specification (`packaging/debian/control`, `rules`).
+  - Distribution tarball builder (`scripts/package.py`) outputting `dist/alphen-box-0.1.0-arm64.tar.gz`.
+- Release binary size measured at **1.68 MB**, well within the 6 MB budget.
+
 ## [0.9.0] - 2026-11-18
 
 ### Added - Milestone 9: Rootless Mode

@@ -1,0 +1,15 @@
+Source: alphen-box
+Section: admin
+Priority: optional
+Maintainer: Alphen OS Team <team@alphen-os.org>
+Build-Depends: debhelper-compat (= 13), cargo, rustc
+Standards-Version: 4.6.0
+Homepage: https://github.com/alphen-os/alphen-box
+
+Package: alphen-box
+Architecture: arm64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Ultra-lightweight container runtime for Alphen OS (ARM64)
+ Minimal, high-performance OCI-compliant container runtime designed
+ specifically for 64-bit ARM Linux (Raspberry Pi 4/5, SBCs, ARM servers).
+ Provides Docker-compatible CLI and sub-5MB idle RSS footprint.

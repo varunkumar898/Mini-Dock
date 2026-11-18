@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_build:
+	cargo build --release --locked
+
+override_dh_auto_install:
+	install -Dm755 target/release/alphen-box debian/alphen-box/usr/bin/alphen-box
+	install -Dm755 target/release/docker debian/alphen-box/usr/bin/docker
+	install -Dm755 packaging/alphen-box-setup.sh debian/alphen-box/usr/libexec/alphen-box/alphen-box-setup.sh
+	install -Dm644 packaging/alphen-box.service debian/alphen-box/lib/systemd/system/alphen-box.service

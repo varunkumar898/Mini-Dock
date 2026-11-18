@@ -43,6 +43,18 @@ def main():
     dest_bin_name = "alphen-box.exe" if binary_source.endswith(".exe") else "alphen-box"
     shutil.copy2(binary_source, os.path.join(bin_dir, dest_bin_name))
 
+    # Also package docker wrapper if available
+    docker_src = binary_source.replace("alphen-box", "docker")
+    if os.path.exists(docker_src):
+        docker_dest_name = "docker.exe" if docker_src.endswith(".exe") else "docker"
+        shutil.copy2(docker_src, os.path.join(bin_dir, docker_dest_name))
+
+    libexec_dir = os.path.join(PKG_ROOT, "usr", "libexec", "alphen-box")
+    os.makedirs(libexec_dir, exist_ok=True)
+    setup_script = os.path.join("packaging", "alphen-box-setup.sh")
+    if os.path.exists(setup_script):
+        shutil.copy2(setup_script, os.path.join(libexec_dir, "alphen-box-setup.sh"))
+
     service_file = os.path.join("packaging", "alphen-box.service")
     if os.path.exists(service_file):
         shutil.copy2(service_file, os.path.join(systemd_dir, "alphen-box.service"))
