@@ -1,5 +1,13 @@
 //! `alphen-runtime`: Linux container runtime execution, namespaces, mounts, and isolation.
 
+pub mod container;
+pub mod overlay;
+pub mod pivot;
+
+pub use container::{run_container, ContainerConfig};
+pub use overlay::OverlayFs;
+pub use pivot::{switch_root_chroot, switch_root_pivot};
+
 #[cfg(target_os = "linux")]
 use alphen_common::AlphenError;
 use alphen_common::Result;

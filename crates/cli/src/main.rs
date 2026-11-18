@@ -5,6 +5,7 @@
 use alphen_common::{AlphenError, Result};
 use alphen_core::ImageReference;
 use alphen_image::ImageStore;
+use alphen_runtime::ContainerConfig;
 use clap::{Args, Parser, Subcommand};
 use std::process::ExitCode;
 
@@ -256,10 +257,38 @@ fn run_app(cli: Cli) -> Result<()> {
         }
 
         Commands::Run(args) => {
-            println!("Milestone 3+ feature: run image '{}'", args.image);
-            Err(AlphenError::Config(
-                "Container run is scheduled for Milestones 3-8".into(),
-            ))
+            let image_ref = ImageReference::parse(&args.image)?;
+            let store = ImageStore::new_default();
+
+            // Pull image if not already cached
+            if store.get_image(&image_ref)?.is_none() {
+                println!(
+                    "Unable to find image '{}' locally",
+                    image_ref.display_name()
+                );
+                println!("Pulling from {}...", image_ref.display_name());
+                store.pull(&image_ref)?;
+            }
+
+            let container_id = args.name.clone().unwrap_or_else(ContainerConfig::new_id);
+
+            let config = ContainerConfig {
+                id: container_id,
+                image_ref,
+                command: args.command.clone(),
+                env: args.env.clone(),
+                workdir: args.workdir.clone(),
+                rm: args.rm,
+                detach: args.detach,
+            };
+
+            let exit_code = alphen_runtime::run_container(&config, &store)?;
+            if exit_code != 0 {
+                return Err(AlphenError::Runtime(format!(
+                    "Container exited with status {exit_code}"
+                )));
+            }
+            Ok(())
         }
 
         Commands::Ps { all } => {

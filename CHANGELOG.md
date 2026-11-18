@@ -5,6 +5,22 @@ All notable changes to `alphen-box` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-11-18
+
+### Added - Milestone 3: Run Without Isolation
+- OverlayFS container filesystem driver (`alphen-runtime::overlay`):
+  - Sets up `lowerdir`, `upperdir`, `workdir`, and `merged` mount layouts.
+  - Mounts via Linux `libc::mount` and unmounts cleanly on exit using `umount2(MNT_DETACH)`.
+- Root transition module (`alphen-runtime::pivot`):
+  - Linux `pivot_root(2)` root pivot sequence using self-bind mounts, private propagation, and detached unmount.
+  - Fallback `chroot(2)` support.
+- Container process runner (`alphen-runtime::container`):
+  - Resolves command precedence across CLI args, image `ENTRYPOINT`, and image `CMD`.
+  - Merges environment variables and configures working directories.
+  - Automatic container directory garbage collection on exit when `--rm` is set.
+- CLI command:
+  - `alphen-box run <image> [cmd...]` with auto-pull when image is missing locally.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added - Milestone 2: Image Pull & Storage (Linux ARM64 & Windows ARM64)

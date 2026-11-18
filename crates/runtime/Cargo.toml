@@ -8,6 +8,10 @@ license.workspace = true
 [dependencies]
 alphen-common.workspace = true
 alphen-core.workspace = true
+alphen-image.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 log.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc.workspace = true
