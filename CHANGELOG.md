@@ -5,6 +5,18 @@ All notable changes to `alphen-box` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-11-18
+
+### Added - Milestone 8: Security Hardening
+- Container security engine (`alphen-runtime::security`):
+  - `PR_SET_NO_NEW_PRIVS` enforcement preventing setuid privilege escalation across all containers.
+  - Linux capability bounding set lockdown: all capabilities dropped by default (`PR_CAPBSET_DROP`).
+  - Selective capability flags: `--cap-add <CAP>` and `--cap-drop <CAP>`.
+  - Default seccomp BPF filter attached via `PR_SET_SECCOMP` returning `-EPERM` for high-risk syscalls (`mount`, `pivot_root`, `reboot`, `swapon`, `swapoff`, `kexec_load`, `init_module`, `finit_module`, `delete_module`, `bpf`, `perf_event_open`, `userfaultfd`, `acct`).
+  - Custom seccomp profile support via `--security-opt seccomp=<file>`.
+  - Escape-test verification suite (`tests/escape_tests.rs`) covering process concealment and capability isolation.
+- Release binary size measured at **1.63 MB**, well within the 6 MB budget.
+
 ## [0.7.0] - 2026-11-18
 
 ### Added - Milestone 7: Networking

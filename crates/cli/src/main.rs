@@ -204,6 +204,18 @@ pub struct RunArgs {
     #[arg(long = "entrypoint")]
     pub entrypoint: Option<String>,
 
+    /// Add Linux capabilities (--cap-add NET_BIND_SERVICE)
+    #[arg(long = "cap-add")]
+    pub cap_add: Vec<String>,
+
+    /// Drop Linux capabilities (--cap-drop ALL)
+    #[arg(long = "cap-drop")]
+    pub cap_drop: Vec<String>,
+
+    /// Security options (--security-opt seccomp=profile.json)
+    #[arg(long = "security-opt")]
+    pub security_opt: Vec<String>,
+
     /// Image to run
     pub image: String,
 
@@ -334,6 +346,15 @@ fn run_app(cli: Cli) -> Result<()> {
                 port_mappings.push(p.parse::<alphen_net::PortMapping>()?);
             }
 
+            let seccomp_profile =
+                alphen_runtime::SecurityOptions::parse_security_opt(&args.security_opt)?;
+            let security = alphen_runtime::SecurityOptions {
+                cap_add: args.cap_add.clone(),
+                cap_drop: args.cap_drop.clone(),
+                seccomp_profile,
+                no_new_privs: true,
+            };
+
             let config = ContainerConfig {
                 id: container_id,
                 image_ref,
@@ -350,6 +371,7 @@ fn run_app(cli: Cli) -> Result<()> {
                 network_mode,
                 ports: port_mappings,
                 dns_servers: args.dns.clone(),
+                security,
             };
 
             let exit_code = alphen_runtime::run_container(&config, &store)?;
@@ -424,6 +446,7 @@ fn run_app(cli: Cli) -> Result<()> {
                 network_mode: alphen_net::NetworkMode::Bridge,
                 ports: vec![],
                 dns_servers: vec![],
+                security: alphen_runtime::SecurityOptions::default(),
             };
             alphen_runtime::run_container(&config, &store)?;
             println!("{}", state.id);

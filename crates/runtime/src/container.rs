@@ -43,6 +43,8 @@ pub struct ContainerConfig {
     pub ports: Vec<alphen_net::PortMapping>,
     /// DNS nameserver overrides.
     pub dns_servers: Vec<String>,
+    /// Security profile and hardening options.
+    pub security: crate::security::SecurityOptions,
 }
 
 impl ContainerConfig {
@@ -264,6 +266,20 @@ fn execute_linux(
             unsafe { libc::_exit(127) };
         }
 
+        // Apply security hardening: capabilities, no_new_privs, seccomp
+        let _ = crate::security::apply_capabilities(
+            &config.security.cap_add,
+            &config.security.cap_drop,
+        );
+        let _ = crate::security::set_no_new_privs();
+        let _ = crate::security::apply_seccomp_filter(
+            config
+                .security
+                .seccomp_profile
+                .as_deref()
+                .map(std::path::Path::new),
+        );
+
         // Apply working directory
         let workdir = config.workdir.as_deref().unwrap_or("/");
         let c_workdir = CString::new(workdir).unwrap_or_default();
@@ -385,6 +401,7 @@ mod tests {
             network_mode: alphen_net::NetworkMode::Bridge,
             ports: vec![],
             dns_servers: vec![],
+            security: crate::security::SecurityOptions::default(),
         };
         let stored = StoredImage {
             reference: cfg.image_ref.clone(),
