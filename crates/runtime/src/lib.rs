@@ -8,6 +8,7 @@ pub mod mounts;
 pub mod namespaces;
 pub mod overlay;
 pub mod pivot;
+pub mod rootless;
 pub mod security;
 pub mod state;
 
@@ -19,6 +20,9 @@ pub use mounts::{mount_virtual_filesystems, mount_volumes_and_tmpfs, VolumeMount
 pub use namespaces::{setup_namespaces, NamespaceConfig};
 pub use overlay::OverlayFs;
 pub use pivot::{switch_root_chroot, switch_root_pivot};
+pub use rootless::{
+    configure_id_maps, get_host_uid_gid, is_rootless, parse_user_spec, RootlessConfig,
+};
 pub use security::{apply_capabilities, apply_seccomp_filter, set_no_new_privs, SecurityOptions};
 pub use state::{delete_state, get_state, list_states, save_state};
 

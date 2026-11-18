@@ -45,6 +45,8 @@ pub struct ContainerConfig {
     pub dns_servers: Vec<String>,
     /// Security profile and hardening options.
     pub security: crate::security::SecurityOptions,
+    /// Run with unprivileged user namespace (rootless mode).
+    pub rootless: bool,
 }
 
 impl ContainerConfig {
@@ -77,13 +79,14 @@ pub fn run_container(config: &ContainerConfig, store: &ImageStore) -> Result<i32
     log::info!("Preparing container rootfs in {:?}...", rootfs_dir);
     store.unpack_rootfs(&stored_image, &rootfs_dir)?;
 
-    // Configure Linux namespaces (PID, Mount, UTS, IPC, Network)
+    // Configure Linux namespaces (PID, Mount, UTS, IPC, Network, User)
     let ns_config = NamespaceConfig {
         new_pid: true,
         new_mount: true,
         new_uts: true,
         new_ipc: true,
         new_net: config.network_mode != alphen_net::NetworkMode::Host,
+        new_user: config.rootless || crate::rootless::is_rootless(),
         hostname: config
             .hostname
             .clone()
@@ -402,6 +405,7 @@ mod tests {
             ports: vec![],
             dns_servers: vec![],
             security: crate::security::SecurityOptions::default(),
+            rootless: false,
         };
         let stored = StoredImage {
             reference: cfg.image_ref.clone(),

@@ -17,6 +17,8 @@ pub struct NamespaceConfig {
     pub new_ipc: bool,
     /// Create independent Network namespace (man 7 network_namespaces).
     pub new_net: bool,
+    /// Create independent User namespace for unprivileged rootless operation (man 7 user_namespaces).
+    pub new_user: bool,
     /// Hostname to configure in the UTS namespace.
     pub hostname: String,
 }
@@ -28,7 +30,8 @@ impl Default for NamespaceConfig {
             new_mount: true,
             new_uts: true,
             new_ipc: true,
-            new_net: false, // Network namespace managed by alphen-net in M7
+            new_net: false,
+            new_user: crate::rootless::is_rootless(),
             hostname: "alphen-container".to_string(),
         }
     }
@@ -68,6 +71,9 @@ fn setup_namespaces_linux(config: &NamespaceConfig) -> Result<()> {
     if config.new_net {
         unshare_flags |= libc::CLONE_NEWNET;
     }
+    if config.new_user {
+        unshare_flags |= libc::CLONE_NEWUSER;
+    }
 
     // SAFETY: unsharing namespaces via libc::unshare(2)
     unsafe {
@@ -76,6 +82,12 @@ fn setup_namespaces_linux(config: &NamespaceConfig) -> Result<()> {
                 "unshare(0x{unshare_flags:x}) failed: {}",
                 std::io::Error::last_os_error()
             )));
+        }
+
+        // Configure UID and GID maps for user namespace before mount operations
+        if config.new_user {
+            let (uid, gid) = crate::rootless::get_host_uid_gid();
+            let _ = crate::rootless::configure_id_maps(0, uid, gid);
         }
 
         // Set private mount propagation to avoid leaking mounts back to the host

@@ -216,6 +216,10 @@ pub struct RunArgs {
     #[arg(long = "security-opt")]
     pub security_opt: Vec<String>,
 
+    /// Run container in rootless mode (using unprivileged user namespaces)
+    #[arg(long = "rootless")]
+    pub rootless: bool,
+
     /// Image to run
     pub image: String,
 
@@ -372,6 +376,7 @@ fn run_app(cli: Cli) -> Result<()> {
                 ports: port_mappings,
                 dns_servers: args.dns.clone(),
                 security,
+                rootless: args.rootless || alphen_runtime::is_rootless(),
             };
 
             let exit_code = alphen_runtime::run_container(&config, &store)?;
@@ -447,6 +452,7 @@ fn run_app(cli: Cli) -> Result<()> {
                 ports: vec![],
                 dns_servers: vec![],
                 security: alphen_runtime::SecurityOptions::default(),
+                rootless: alphen_runtime::is_rootless(),
             };
             alphen_runtime::run_container(&config, &store)?;
             println!("{}", state.id);

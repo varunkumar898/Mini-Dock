@@ -63,12 +63,16 @@ impl OverlayFs {
             .collect();
         let lowerdir_opt = lower_paths.join(":");
 
-        let options = format!(
+        let mut options = format!(
             "lowerdir={},upperdir={},workdir={}",
             lowerdir_opt,
             self.upper_dir.to_string_lossy(),
             self.work_dir.to_string_lossy()
         );
+
+        if crate::rootless::is_rootless() {
+            options.push_str(",userxattr");
+        }
 
         let source = CString::new("overlay").unwrap();
         let target = CString::new(self.merged_dir.to_string_lossy().as_bytes()).unwrap();

@@ -27,9 +27,11 @@ fn test_default_security_lockdown_configuration() {
             seccomp_profile: None,
             no_new_privs: true,
         },
+        rootless: true,
     };
 
     assert!(cfg.read_only);
+    assert!(cfg.rootless);
     assert!(cfg.security.no_new_privs);
     assert_eq!(cfg.security.cap_drop, vec!["ALL"]);
 }

@@ -5,6 +5,18 @@ All notable changes to `alphen-box` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-11-18
+
+### Added - Milestone 9: Rootless Mode
+- Unprivileged user namespace driver (`alphen-runtime::rootless`):
+  - Direct `uid_map` and `gid_map` allocation without requiring `newuidmap`/`newgidmap` or `sudo`.
+  - Automated `setgroups` denial satisfying Linux kernel group security requirements.
+  - Automatic detection of unprivileged execution (`geteuid() != 0`) transparently switching to rootless mode.
+  - Unprivileged OverlayFS with `userxattr` mount options for Linux 5.11+ kernels.
+  - CLI `--rootless` flag.
+  - Full root vs rootless capability matrix documented in `docs/milestone-9.md`.
+- Release binary size measured at **1.63 MB**, well within the 6 MB budget.
+
 ## [0.8.0] - 2026-11-18
 
 ### Added - Milestone 8: Security Hardening
