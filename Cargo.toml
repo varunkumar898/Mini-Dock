@@ -1,0 +1,38 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/common",
+    "crates/core",
+    "crates/image",
+    "crates/runtime",
+    "crates/net",
+    "crates/cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Alphen OS Team"]
+license = "Apache-2.0"
+repository = "https://github.com/alphen-os/alphen-box"
+
+[workspace.dependencies]
+alphen-common = { path = "crates/common" }
+alphen-core = { path = "crates/core" }
+alphen-image = { path = "crates/image" }
+alphen-runtime = { path = "crates/runtime" }
+alphen-net = { path = "crates/net" }
+
+clap = { version = "4.5", default-features = false, features = ["derive", "std", "help", "usage"] }
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+thiserror = { version = "2.0", default-features = false }
+log = { version = "0.4", default-features = false }
+env_logger = { version = "0.11", default-features = false }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -1,0 +1,19 @@
+[Unit]
+Description=Alphen OS Container Runtime Service
+Documentation=https://github.com/alphen-os/alphen-box
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/alphen-box
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+Delegate=yes
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,32 @@
+# Maintainer: Alphen OS Core Team <team@alphen-os.org>
+pkgname=alphen-box
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Ultra-lightweight container runtime for Alphen OS (ARM64)"
+url="https://github.com/alphen-os/alphen-box"
+arch="aarch64"
+license="Apache-2.0"
+depends=""
+makedepends="cargo rust"
+subpackages=""
+source="alphen-box-$pkgver.tar.gz
+        alphen-box.service"
+
+build() {
+    cargo build --release --locked --target aarch64-unknown-linux-musl
+}
+
+check() {
+    cargo test --release --locked --target aarch64-unknown-linux-musl
+}
+
+package() {
+    install -Dm755 "target/aarch64-unknown-linux-musl/release/alphen-box" "$pkgdir/usr/bin/alphen-box"
+    ln -s alphen-box "$pkgdir/usr/bin/docker"
+    install -Dm644 "$srcdir/alphen-box.service" "$pkgdir/usr/lib/systemd/system/alphen-box.service"
+
+    install -dm755 "$pkgdir/var/lib/alphen-box/blobs"
+    install -dm755 "$pkgdir/var/lib/alphen-box/images"
+    install -dm755 "$pkgdir/var/lib/alphen-box/containers"
+    install -dm755 "$pkgdir/run/alphen-box"
+}

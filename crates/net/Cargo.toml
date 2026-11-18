@@ -1,0 +1,11 @@
+[package]
+name = "alphen-net"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+alphen-common.workspace = true
+alphen-core.workspace = true
+log.workspace = true
