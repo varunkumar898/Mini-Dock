@@ -37,6 +37,12 @@ pub struct ContainerConfig {
     pub rm: bool,
     /// Run detached in the background.
     pub detach: bool,
+    /// Network mode (none, host, bridge).
+    pub network_mode: alphen_net::NetworkMode,
+    /// Port mapping forwardings (-p host:container[/proto]).
+    pub ports: Vec<alphen_net::PortMapping>,
+    /// DNS nameserver overrides.
+    pub dns_servers: Vec<String>,
 }
 
 impl ContainerConfig {
@@ -69,19 +75,29 @@ pub fn run_container(config: &ContainerConfig, store: &ImageStore) -> Result<i32
     log::info!("Preparing container rootfs in {:?}...", rootfs_dir);
     store.unpack_rootfs(&stored_image, &rootfs_dir)?;
 
-    // Configure Linux namespaces (PID, Mount, UTS, IPC)
+    // Configure Linux namespaces (PID, Mount, UTS, IPC, Network)
     let ns_config = NamespaceConfig {
         new_pid: true,
         new_mount: true,
         new_uts: true,
         new_ipc: true,
-        new_net: false,
+        new_net: config.network_mode != alphen_net::NetworkMode::Host,
         hostname: config
             .hostname
             .clone()
             .unwrap_or_else(|| config.id[..12.min(config.id.len())].to_string()),
     };
     setup_namespaces(&ns_config)?;
+
+    // Provision container networking (veth, bridge, IPAM, NAT, DNS)
+    let container_ip = alphen_net::setup_container_network(
+        &config.id,
+        std::process::id(),
+        config.network_mode,
+        &config.ports,
+        &config.dns_servers,
+        &rootfs_dir,
+    )?;
 
     // Set up cgroups v2 resource limits
     let cgroup = CgroupManager::new(&config.id);
@@ -138,6 +154,12 @@ pub fn run_container(config: &ContainerConfig, store: &ImageStore) -> Result<i32
     let _ = crate::state::save_state(&state);
 
     let _ = cgroup.cleanup();
+    let _ = alphen_net::teardown_container_network(
+        &config.id,
+        config.network_mode,
+        &config.ports,
+        container_ip,
+    );
 
     if config.rm {
         log::debug!("Removing container workspace for {}", config.id);
@@ -360,6 +382,9 @@ mod tests {
             hostname: None,
             rm: false,
             detach: false,
+            network_mode: alphen_net::NetworkMode::Bridge,
+            ports: vec![],
+            dns_servers: vec![],
         };
         let stored = StoredImage {
             reference: cfg.image_ref.clone(),

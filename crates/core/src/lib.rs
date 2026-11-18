@@ -58,6 +58,11 @@ pub fn default_containers_dir() -> PathBuf {
     default_data_dir().join("containers")
 }
 
+/// Directory for network state and IPAM leases.
+pub fn default_networks_dir() -> PathBuf {
+    default_data_dir().join("networks")
+}
+
 /// Lifecycle status of a container.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContainerStatus {

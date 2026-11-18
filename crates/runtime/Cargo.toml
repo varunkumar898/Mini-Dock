@@ -9,6 +9,7 @@ license.workspace = true
 alphen-common.workspace = true
 alphen-core.workspace = true
 alphen-image.workspace = true
+alphen-net.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 log.workspace = true

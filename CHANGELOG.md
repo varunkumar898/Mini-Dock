@@ -5,6 +5,26 @@ All notable changes to `alphen-box` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-11-18
+
+### Added - Milestone 7: Networking
+- Direct kernel netlink driver (`alphen-net::netlink`):
+  - Talk to Linux kernel via synchronous `AF_NETLINK` / `NETLINK_ROUTE` raw sockets without external binaries (`ip`, `brctl`).
+  - Automated `alphen0` bridge device configuration and gateway address assignment (`10.88.0.1/16`).
+  - Veth pair creation (`veth_<id>` $\leftrightarrow$ `ceth_<id>`), master bridge attachment, and namespace migration (`IFLA_NET_NS_PID`).
+  - Direct IP allocation and default gateway configuration (`RTM_NEWADDR`, `RTM_NEWROUTE`).
+  - Clean veth teardown on container exit (`RTM_DELLINK`).
+- IP Address Management (`alphen-net::ipam`):
+  - Deterministic IP allocation in `10.88.0.0/16` with atomic lease storage and file locking (`flock`).
+- Kernel nftables driver (`alphen-net::nftables`):
+  - Direct netfilter netlink (`NETLINK_NETFILTER`) configuration for outbound masquerade NAT and `-p HOST:CONTAINER[/tcp|udp]` DNAT port forwarding.
+- Container DNS management (`alphen-net::dns`):
+  - Generates `/etc/resolv.conf` from host DNS configuration or explicit `--dns <server>` flags.
+- CLI network modes:
+  - `--network bridge` (default), `--network host`, and `--network none`.
+  - Port publishing via `-p HOST:CONTAINER[/proto]`.
+- Release binary size measured at **1.63 MB**, well within the 6 MB budget.
+
 ## [0.6.0] - 2026-11-18
 
 ### Added - Milestone 6: Lifecycle and Logs

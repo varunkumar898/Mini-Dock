@@ -144,6 +144,10 @@ pub struct RunArgs {
     #[arg(long = "network", default_value = "bridge")]
     pub network: String,
 
+    /// Set custom DNS servers (--dns 8.8.8.8)
+    #[arg(long = "dns")]
+    pub dns: Vec<String>,
+
     /// Memory limit (e.g. 64m, 1g)
     #[arg(long = "memory")]
     pub memory: Option<String>,
@@ -324,6 +328,12 @@ fn run_app(cli: Cli) -> Result<()> {
                 device_write_bps: args.device_write_bps.clone(),
             };
 
+            let network_mode: alphen_net::NetworkMode = args.network.parse()?;
+            let mut port_mappings = Vec::new();
+            for p in &args.ports {
+                port_mappings.push(p.parse::<alphen_net::PortMapping>()?);
+            }
+
             let config = ContainerConfig {
                 id: container_id,
                 image_ref,
@@ -337,6 +347,9 @@ fn run_app(cli: Cli) -> Result<()> {
                 hostname: args.hostname.clone(),
                 rm: args.rm,
                 detach: args.detach,
+                network_mode,
+                ports: port_mappings,
+                dns_servers: args.dns.clone(),
             };
 
             let exit_code = alphen_runtime::run_container(&config, &store)?;
@@ -408,6 +421,9 @@ fn run_app(cli: Cli) -> Result<()> {
                 hostname: Some(state.name.clone()),
                 rm: false,
                 detach: true,
+                network_mode: alphen_net::NetworkMode::Bridge,
+                ports: vec![],
+                dns_servers: vec![],
             };
             alphen_runtime::run_container(&config, &store)?;
             println!("{}", state.id);
