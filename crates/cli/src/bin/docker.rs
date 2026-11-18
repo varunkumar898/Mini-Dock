@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `docker` compatibility wrapper for `alphen-box`.
 //!
 //! Provides drop-in compatibility for Docker scripts and CLI habits.
