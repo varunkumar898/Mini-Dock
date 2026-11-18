@@ -1,5 +1,7 @@
 //! Container lifecycle execution and process supervision.
 
+use crate::mounts::{mount_virtual_filesystems, mount_volumes_and_tmpfs, VolumeMount};
+use crate::namespaces::{setup_namespaces, NamespaceConfig};
 #[cfg(target_os = "linux")]
 use crate::pivot::switch_root_pivot;
 use alphen_common::{AlphenError, Result};
@@ -20,6 +22,14 @@ pub struct ContainerConfig {
     pub env: Vec<String>,
     /// Working directory inside the container.
     pub workdir: Option<String>,
+    /// Bind mounts (-v host:container[:ro]).
+    pub volumes: Vec<VolumeMount>,
+    /// Tmpfs mounts (--tmpfs /path).
+    pub tmpfs: Vec<String>,
+    /// Mount root filesystem as read-only.
+    pub read_only: bool,
+    /// Hostname override.
+    pub hostname: Option<String>,
     /// Automatically remove container directory on exit.
     pub rm: bool,
     /// Run detached in the background.
@@ -55,6 +65,24 @@ pub fn run_container(config: &ContainerConfig, store: &ImageStore) -> Result<i32
     let rootfs_dir = container_dir.join("rootfs");
     log::info!("Preparing container rootfs in {:?}...", rootfs_dir);
     store.unpack_rootfs(&stored_image, &rootfs_dir)?;
+
+    // Configure Linux namespaces (PID, Mount, UTS, IPC)
+    let ns_config = NamespaceConfig {
+        new_pid: true,
+        new_mount: true,
+        new_uts: true,
+        new_ipc: true,
+        new_net: false,
+        hostname: config
+            .hostname
+            .clone()
+            .unwrap_or_else(|| config.id[..12.min(config.id.len())].to_string()),
+    };
+    setup_namespaces(&ns_config)?;
+
+    // Mount container virtual filesystems and volumes
+    mount_virtual_filesystems(&rootfs_dir, config.read_only)?;
+    mount_volumes_and_tmpfs(&rootfs_dir, &config.volumes, &config.tmpfs)?;
 
     // Resolve command to execute: CLI args > Image ENTRYPOINT + CMD > /bin/sh
     let resolved_command = resolve_command(config, &stored_image);
@@ -276,6 +304,10 @@ mod tests {
             command: vec!["echo".into(), "hello".into()],
             env: vec![],
             workdir: None,
+            volumes: vec![],
+            tmpfs: vec![],
+            read_only: false,
+            hostname: None,
             rm: false,
             detach: false,
         };

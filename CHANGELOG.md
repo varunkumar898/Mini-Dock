@@ -5,6 +5,26 @@ All notable changes to `alphen-box` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-11-18
+
+### Added - Milestone 4: Namespaces and Mounts
+- Linux kernel namespace isolation (`alphen-runtime::namespaces`):
+  - PID namespace (`CLONE_NEWPID`): init process becomes PID 1, hiding all host processes.
+  - Mount namespace (`CLONE_NEWNS`): private mount propagation (`MS_REC | MS_PRIVATE`).
+  - UTS namespace (`CLONE_NEWUTS`): isolated container hostname configuration (`--hostname`).
+  - IPC namespace (`CLONE_NEWIPC`): isolates SysV IPC and POSIX message queues.
+- Container virtual filesystems (`alphen-runtime::mounts`):
+  - Private `/proc` mount (guaranteeing `ps` inside container shows PID 1 and container processes only).
+  - Read-only `/sys` mount with `MS_RDONLY | MS_NODEV | MS_NOSUID | MS_NOEXEC`.
+  - Minimal `/dev` tmpfs with standard device nodes (`null`, `zero`, `full`, `random`, `urandom`, `tty`).
+  - Pseudoterminal multiplexer `/dev/pts` (`newinstance`) and shared memory `/dev/shm`.
+- Mount options and security flags:
+  - Bind mounts: `-v /host:/container[:ro]`.
+  - Tmpfs mounts: `--tmpfs /path`.
+  - Read-only rootfs: `--read-only`.
+  - Custom hostname override: `--hostname <name>`.
+- Release binary size measured at **1.62 MB**, well within the 6 MB budget.
+
 ## [0.3.0] - 2026-11-18
 
 ### Added - Milestone 3: Run Without Isolation

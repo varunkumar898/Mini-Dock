@@ -160,6 +160,14 @@ pub struct RunArgs {
     #[arg(long = "read-only")]
     pub read_only: bool,
 
+    /// Mount a tmpfs directory (--tmpfs /path)
+    #[arg(long = "tmpfs")]
+    pub tmpfs: Vec<String>,
+
+    /// Container host name
+    #[arg(long = "hostname")]
+    pub hostname: Option<String>,
+
     /// Username or UID
     #[arg(short = 'u', long = "user")]
     pub user: Option<String>,
@@ -272,12 +280,21 @@ fn run_app(cli: Cli) -> Result<()> {
 
             let container_id = args.name.clone().unwrap_or_else(ContainerConfig::new_id);
 
+            let mut volume_mounts = Vec::new();
+            for v in &args.volumes {
+                volume_mounts.push(alphen_runtime::VolumeMount::parse(v)?);
+            }
+
             let config = ContainerConfig {
                 id: container_id,
                 image_ref,
                 command: args.command.clone(),
                 env: args.env.clone(),
                 workdir: args.workdir.clone(),
+                volumes: volume_mounts,
+                tmpfs: args.tmpfs.clone(),
+                read_only: args.read_only,
+                hostname: args.hostname.clone(),
                 rm: args.rm,
                 detach: args.detach,
             };
