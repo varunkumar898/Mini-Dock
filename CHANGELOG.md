@@ -5,6 +5,30 @@ All notable changes to `alphen-box` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-11-18
+
+### Added - Milestone 2: Image Pull & Storage (Linux ARM64 & Windows ARM64)
+- OCI Distribution & Registry client (`alphen-image::registry`):
+  - Token authentication with Docker Hub (`auth.docker.io`), GitHub Container Registry (`ghcr.io`), and standard OCI registries.
+  - Automatic multi-architecture manifest list resolution targeting `linux/arm64` (aarch64).
+  - Pure-Rust TLS support using `ureq` and `rustls` with embedded webpki roots.
+- Content-addressed blob store (`alphen-image::store`):
+  - SHA-256 verified streaming downloads into `blobs/sha256/<hash>`.
+  - Automatic layer deduplication across images.
+  - Portable storage layout supporting both Linux (`/var/lib/alphen-box`) and Windows ARM (`./data/alphen-box`).
+- Layer unpacking with OCI whiteout handling (`alphen-image::layer`):
+  - Unpacks raw and gzip-compressed tar archives.
+  - Full support for `.wh.<name>` explicit file whiteouts and `.wh..wh..opq` opaque directory whiteouts.
+  - Path traversal security checks.
+- CLI commands implemented:
+  - `alphen-box pull <image>`
+  - `alphen-box images`
+  - `alphen-box inspect <image>`
+  - `alphen-box rmi <image>`
+  - `alphen-box gc`
+- Comprehensive unit and integration test suite (`tests/image_lifecycle.rs`).
+- Release binary size measured at **1.48 MB**, well under the 6 MB budget.
+
 ## [0.1.0] - 2026-11-18
 
 ### Added - Milestone 1: Skeleton

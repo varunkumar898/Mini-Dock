@@ -24,11 +24,15 @@ alphen-runtime = { path = "crates/runtime" }
 alphen-net = { path = "crates/net" }
 
 clap = { version = "4.5", default-features = false, features = ["derive", "std", "help", "usage"] }
-serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
-serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc", "std"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc", "std"] }
 thiserror = { version = "2.0", default-features = false }
 log = { version = "0.4", default-features = false }
 env_logger = { version = "0.11", default-features = false }
+sha2 = { version = "0.10", default-features = false }
+flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
+tar = { version = "0.4", default-features = false }
+ureq = { version = "2.10", default-features = false, features = ["tls"] }
 
 [profile.release]
 opt-level = "z"

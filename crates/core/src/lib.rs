@@ -2,7 +2,56 @@
 
 //! `alphen-core`: Fundamental types, specs, and data models for `alphen-box`.
 
+use alphen_common::{AlphenError, Result};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+
+/// Return default base data directory for alphen-box.
+/// On Linux: `/var/lib/alphen-box`.
+/// On Windows: `%ProgramData%\alphen-box` or `./data/alphen-box`.
+pub fn default_data_dir() -> PathBuf {
+    if let Ok(custom) = std::env::var("ALPHEN_DATA_DIR") {
+        return PathBuf::from(custom);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // On Windows, default to local `./data/alphen-box` for seamless non-admin & sandboxed use
+        PathBuf::from("data").join("alphen-box")
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        PathBuf::from("/var/lib/alphen-box")
+    }
+}
+
+/// Return default volatile run directory for alphen-box.
+/// On Linux: `/run/alphen-box`.
+/// On Windows: `<data_dir>/run`.
+pub fn default_run_dir() -> PathBuf {
+    if let Ok(custom) = std::env::var("ALPHEN_RUN_DIR") {
+        return PathBuf::from(custom);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        default_data_dir().join("run")
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        PathBuf::from("/run/alphen-box")
+    }
+}
+
+/// Directory for content-addressed SHA-256 layer blobs.
+pub fn default_blob_dir() -> PathBuf {
+    default_data_dir().join("blobs").join("sha256")
+}
+
+/// Directory for stored image metadata manifests.
+pub fn default_image_dir() -> PathBuf {
+    default_data_dir().join("images")
+}
 
 /// Basic representation of an image reference.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -23,11 +72,9 @@ impl ImageReference {
     /// Examples:
     /// - `alpine:3.20` -> docker.io/library/alpine:3.20
     /// - `ghcr.io/org/repo:tag` -> ghcr.io/org/repo:tag
-    pub fn parse(input: &str) -> Result<Self, alphen_common::AlphenError> {
+    pub fn parse(input: &str) -> Result<Self> {
         if input.trim().is_empty() {
-            return Err(alphen_common::AlphenError::Config(
-                "Image name cannot be empty".into(),
-            ));
+            return Err(AlphenError::Config("Image name cannot be empty".into()));
         }
 
         let (image_part, digest) = match input.split_once('@') {
@@ -75,6 +122,12 @@ impl ImageReference {
         }
         format!("{}/{}:{}", self.registry, self.repository, self.tag)
     }
+
+    /// Return a safe file system key name (e.g. `docker.io_library_alpine_3.20.json`).
+    pub fn storage_filename(&self) -> String {
+        let safe_repo = self.repository.replace('/', "_");
+        format!("{}_{}_{}.json", self.registry, safe_repo, self.tag)
+    }
 }
 
 /// Metadata summary of a locally stored container image.
@@ -111,6 +164,104 @@ impl ImageSummary {
     }
 }
 
+/// Fully described local image record stored in `images/<filename>.json`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StoredImage {
+    /// Canonical image reference.
+    pub reference: ImageReference,
+    /// Image ID (short or full SHA-256 digest of config).
+    pub id: String,
+    /// Digest of the image manifest.
+    pub manifest_digest: String,
+    /// Digest of the config blob.
+    pub config_digest: String,
+    /// Array of layer digests in rootfs stack order (bottom layer first).
+    pub layers: Vec<String>,
+    /// Aggregated layer size in bytes.
+    pub size_bytes: u64,
+    /// Image created timestamp.
+    pub created: String,
+    /// Container runtime configuration details.
+    pub config: Option<OciConfigDetails>,
+}
+
+/// Container runtime execution parameters from image config.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OciConfigDetails {
+    /// Environment variables (KEY=VALUE).
+    #[serde(default)]
+    pub env: Vec<String>,
+    /// Command arguments.
+    #[serde(default)]
+    pub cmd: Vec<String>,
+    /// Entrypoint executable.
+    #[serde(default)]
+    pub entrypoint: Vec<String>,
+    /// Working directory inside container.
+    pub working_dir: Option<String>,
+    /// User or UID/GID.
+    pub user: Option<String>,
+}
+
+/// OCI content descriptor.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OciDescriptor {
+    #[serde(rename = "mediaType")]
+    pub media_type: String,
+    pub digest: String,
+    pub size: u64,
+}
+
+/// Platform specification in OCI index / manifest list.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OciPlatform {
+    pub architecture: String,
+    pub os: String,
+    #[serde(default)]
+    pub variant: Option<String>,
+}
+
+/// OCI Image Index / Docker Manifest List item.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OciManifestEntry {
+    #[serde(rename = "mediaType")]
+    pub media_type: String,
+    pub digest: String,
+    pub size: u64,
+    pub platform: Option<OciPlatform>,
+}
+
+/// OCI Image Index / Docker Manifest List.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OciImageIndex {
+    #[serde(rename = "schemaVersion")]
+    pub schema_version: u32,
+    #[serde(default)]
+    pub manifests: Vec<OciManifestEntry>,
+}
+
+/// OCI Image Manifest / Docker v2 Schema 2 Manifest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OciManifest {
+    #[serde(rename = "schemaVersion")]
+    pub schema_version: u32,
+    #[serde(rename = "mediaType", default)]
+    pub media_type: Option<String>,
+    pub config: OciDescriptor,
+    pub layers: Vec<OciDescriptor>,
+}
+
+/// OCI Image Config JSON representation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OciImageConfig {
+    pub architecture: String,
+    pub os: String,
+    #[serde(default)]
+    pub created: Option<String>,
+    #[serde(default)]
+    pub config: Option<OciConfigDetails>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,6 +273,7 @@ mod tests {
         assert_eq!(r.repository, "library/alpine");
         assert_eq!(r.tag, "3.20");
         assert_eq!(r.display_name(), "alpine:3.20");
+        assert_eq!(r.storage_filename(), "docker.io_library_alpine_3.20.json");
     }
 
     #[test]
@@ -131,6 +283,7 @@ mod tests {
         assert_eq!(r.repository, "alphen/box");
         assert_eq!(r.tag, "latest");
         assert_eq!(r.display_name(), "ghcr.io/alphen/box:latest");
+        assert_eq!(r.storage_filename(), "ghcr.io_alphen_box_latest.json");
     }
 
     #[test]
@@ -143,5 +296,13 @@ mod tests {
             created: "2 weeks ago".into(),
         };
         assert_eq!(summary.formatted_size(), "8.0 MB");
+    }
+
+    #[test]
+    fn test_default_paths_exist() {
+        let base = default_data_dir();
+        assert!(!base.as_os_str().is_empty());
+        let blobs = default_blob_dir();
+        assert!(blobs.ends_with(PathBuf::from("blobs").join("sha256")));
     }
 }

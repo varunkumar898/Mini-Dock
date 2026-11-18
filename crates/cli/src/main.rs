@@ -2,8 +2,9 @@
 
 //! `alphen-box`: Ultra-lightweight container runtime for Alphen OS (ARM64).
 
-use alphen_common::Result;
-use alphen_image::{ImageStore, DEFAULT_IMAGE_STORE_DIR};
+use alphen_common::{AlphenError, Result};
+use alphen_core::ImageReference;
+use alphen_image::ImageStore;
 use clap::{Args, Parser, Subcommand};
 use std::process::ExitCode;
 
@@ -219,7 +220,7 @@ fn run_app(cli: Cli) -> Result<()> {
         }
 
         Commands::Images => {
-            let store = ImageStore::new(DEFAULT_IMAGE_STORE_DIR);
+            let store = ImageStore::new_default();
             let images = store.list_images()?;
 
             println!(
@@ -227,7 +228,7 @@ fn run_app(cli: Cli) -> Result<()> {
                 "REPOSITORY", "TAG", "IMAGE ID", "CREATED", "SIZE"
             );
             if images.is_empty() {
-                // Empty message or clean output like docker
+                // Empty output like docker
             } else {
                 for img in images {
                     println!(
@@ -244,15 +245,19 @@ fn run_app(cli: Cli) -> Result<()> {
         }
 
         Commands::Pull { image } => {
-            println!("Milestone 2 feature: pull image '{image}'");
-            Err(alphen_common::AlphenError::Config(
-                "Image pull is being implemented in Milestone 2".into(),
-            ))
+            let image_ref = ImageReference::parse(&image)?;
+            println!("Pulling from {}...", image_ref.display_name());
+            let store = ImageStore::new_default();
+            let stored = store.pull(&image_ref)?;
+            println!("Status: Downloaded newer image for {image}");
+            println!("Digest: {}", stored.manifest_digest);
+            println!("ID: {}", stored.id);
+            Ok(())
         }
 
         Commands::Run(args) => {
             println!("Milestone 3+ feature: run image '{}'", args.image);
-            Err(alphen_common::AlphenError::Config(
+            Err(AlphenError::Config(
                 "Container run is scheduled for Milestones 3-8".into(),
             ))
         }
@@ -302,17 +307,37 @@ fn run_app(cli: Cli) -> Result<()> {
         }
 
         Commands::Inspect { target } => {
+            let store = ImageStore::new_default();
+            if let Ok(image_ref) = ImageReference::parse(&target) {
+                if let Ok(Some(stored)) = store.get_image(&image_ref) {
+                    let pretty = serde_json::to_string_pretty(&stored)
+                        .map_err(|e| AlphenError::Config(format!("JSON error: {e}")))?;
+                    println!("{pretty}");
+                    return Ok(());
+                }
+            }
             println!("{{ \"target\": \"{target}\", \"status\": \"not_found\" }}");
             Ok(())
         }
 
         Commands::Rmi { image } => {
-            println!("Untagged: {image}");
+            let image_ref = ImageReference::parse(&image)?;
+            let store = ImageStore::new_default();
+            if store.remove_image(&image_ref)? {
+                println!("Untagged: {image}");
+            } else {
+                eprintln!("Error: No such image: {image}");
+            }
             Ok(())
         }
 
         Commands::Gc => {
-            println!("Running blob garbage collection (Milestone 2)");
+            let store = ImageStore::new_default();
+            let report = store.gc()?;
+            println!(
+                "Total reclaimed space: {} B across {} orphaned blob(s)",
+                report.bytes_freed, report.blobs_removed
+            );
             Ok(())
         }
     }

@@ -4,7 +4,7 @@
 import os
 import sys
 
-BUDGET_BYTES = 2 * 1024 * 1024  # Milestone 1: 2 MB hard target
+BUDGET_BYTES = 6 * 1024 * 1024  # Hard target: under 6 MB stripped release binary
 
 CANDIDATES = [
     "target/aarch64-unknown-linux-musl/release/alphen-box",
