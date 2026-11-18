@@ -100,6 +100,30 @@ pub fn run_container(config: &ContainerConfig, store: &ImageStore) -> Result<i32
         resolved_command
     );
 
+    let container_name = config
+        .hostname
+        .clone()
+        .unwrap_or_else(|| format!("alphen-{}", &config.id[..6.min(config.id.len())]));
+
+    let mut state = alphen_core::ContainerState {
+        id: config.id.clone(),
+        name: container_name,
+        image: config.image_ref.display_name(),
+        command: resolved_command.clone(),
+        status: alphen_core::ContainerStatus::Running,
+        pid: Some(std::process::id()),
+        exit_code: None,
+        created: "just now".to_string(),
+        started_at: Some("just now".to_string()),
+        finished_at: None,
+    };
+    let _ = crate::state::save_state(&state);
+
+    if config.detach {
+        println!("{}", config.id);
+        return Ok(0);
+    }
+
     let exit_code = execute_in_rootfs(
         &rootfs_dir,
         &resolved_command,
@@ -108,11 +132,16 @@ pub fn run_container(config: &ContainerConfig, store: &ImageStore) -> Result<i32
         &cgroup,
     )?;
 
+    state.status = alphen_core::ContainerStatus::Exited;
+    state.exit_code = Some(exit_code);
+    state.finished_at = Some("just now".to_string());
+    let _ = crate::state::save_state(&state);
+
     let _ = cgroup.cleanup();
 
     if config.rm {
         log::debug!("Removing container workspace for {}", config.id);
-        let _ = std::fs::remove_dir_all(&container_dir);
+        let _ = crate::state::delete_state(&config.id);
     }
 
     Ok(exit_code)

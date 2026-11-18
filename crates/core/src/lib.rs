@@ -53,6 +53,84 @@ pub fn default_image_dir() -> PathBuf {
     default_data_dir().join("images")
 }
 
+/// Directory for persistent container configuration and metadata.
+pub fn default_containers_dir() -> PathBuf {
+    default_data_dir().join("containers")
+}
+
+/// Lifecycle status of a container.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ContainerStatus {
+    Created,
+    Running,
+    Exited,
+}
+
+impl std::fmt::Display for ContainerStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ContainerStatus::Created => write!(f, "Created"),
+            ContainerStatus::Running => write!(f, "Up"),
+            ContainerStatus::Exited => write!(f, "Exited"),
+        }
+    }
+}
+
+/// Volatile and persistent container state record.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerState {
+    /// 12-character container ID.
+    pub id: String,
+    /// Container name.
+    pub name: String,
+    /// Container image reference string.
+    pub image: String,
+    /// Command array executed inside the container.
+    pub command: Vec<String>,
+    /// Current execution status.
+    pub status: ContainerStatus,
+    /// Host process ID of container init process if running.
+    pub pid: Option<u32>,
+    /// Process exit code if exited.
+    pub exit_code: Option<i32>,
+    /// Creation timestamp string.
+    pub created: String,
+    /// Time execution started.
+    pub started_at: Option<String>,
+    /// Time execution finished.
+    pub finished_at: Option<String>,
+}
+
+impl ContainerState {
+    /// Formatted status string matching Docker style (e.g. "Up 2 hours", "Exited (0) 5 minutes ago").
+    pub fn formatted_status(&self) -> String {
+        match self.status {
+            ContainerStatus::Created => "Created".to_string(),
+            ContainerStatus::Running => {
+                if let Some(ref pid) = self.pid {
+                    format!("Up (PID {pid})")
+                } else {
+                    "Up".to_string()
+                }
+            }
+            ContainerStatus::Exited => {
+                let code = self.exit_code.unwrap_or(0);
+                format!("Exited ({code})")
+            }
+        }
+    }
+
+    /// Formatted command string truncated to 20 chars if long.
+    pub fn formatted_command(&self) -> String {
+        let joined = self.command.join(" ");
+        if joined.len() > 20 {
+            format!("\"{}...\"", &joined[..17])
+        } else {
+            format!("\"{joined}\"")
+        }
+    }
+}
+
 /// Basic representation of an image reference.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImageReference {

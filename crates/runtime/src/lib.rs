@@ -2,17 +2,23 @@
 
 pub mod cgroups;
 pub mod container;
+pub mod lifecycle;
+pub mod logs;
 pub mod mounts;
 pub mod namespaces;
 pub mod overlay;
 pub mod pivot;
+pub mod state;
 
 pub use cgroups::{parse_memory_str, CgroupManager, ResourceLimits};
 pub use container::{run_container, ContainerConfig};
+pub use lifecycle::{exec_container, rm_container, stop_container};
+pub use logs::{read_container_logs, RotatingLogWriter};
 pub use mounts::{mount_virtual_filesystems, mount_volumes_and_tmpfs, VolumeMount};
 pub use namespaces::{setup_namespaces, NamespaceConfig};
 pub use overlay::OverlayFs;
 pub use pivot::{switch_root_chroot, switch_root_pivot};
+pub use state::{delete_state, get_state, list_states, save_state};
 
 #[cfg(target_os = "linux")]
 use alphen_common::AlphenError;

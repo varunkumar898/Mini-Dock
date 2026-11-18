@@ -5,6 +5,26 @@ All notable changes to `alphen-box` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-11-18
+
+### Added - Milestone 6: Lifecycle and Logs
+- Detached background container execution (`-d` / `--detach`).
+- Full container lifecycle CLI management:
+  - `alphen-box ps [-a]`: lists running and stopped containers.
+  - `alphen-box logs [-f] <container>`: inspects stdout/stderr container logs with optional tailing (`-f`).
+  - `alphen-box stop <container>`: graceful shutdown via SIGTERM with configurable timeout escalating to SIGKILL.
+  - `alphen-box start <container>`: restarts stopped containers.
+  - `alphen-box rm [-f] <container>`: removes container metadata, log files, and overlay storage with optional force kill.
+  - `alphen-box exec [-it] <container> <cmd...>`: joins existing container namespaces (`setns(2)` for PID, mount, UTS, IPC, net) and runs commands.
+  - `alphen-box inspect <container>`: outputs detailed container runtime state and configuration as JSON.
+- Robust state management (`alphen-runtime::state`):
+  - Volatile state in `/run/alphen-box/<id>.json` and persistent metadata in `/var/lib/alphen-box/containers/<id>/state.json`.
+  - Atomic state writes and file locking (`flock`) to prevent concurrent corruption.
+  - Post-reboot state reconciliation detecting dead processes and updating status cleanly.
+- Rotating log subsystem (`alphen-runtime::logs`):
+  - Size-capped log files (10 MB × 3 files: `stdout.log`, `stdout.log.1`, `stdout.log.2`).
+- Release binary size measured at **1.64 MB**, well under the 6 MB budget.
+
 ## [0.5.0] - 2026-11-18
 
 ### Added - Milestone 5: cgroups v2 Limits

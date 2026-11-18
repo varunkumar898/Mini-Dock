@@ -349,19 +349,28 @@ fn run_app(cli: Cli) -> Result<()> {
         }
 
         Commands::Ps { all } => {
+            let states = alphen_runtime::list_states(all)?;
             println!(
-                "{:<15} {:<25} {:<20} {:<15} {:<15} {:<15}",
+                "{:<15} {:<20} {:<22} {:<15} {:<18} {:<15}",
                 "CONTAINER ID", "IMAGE", "COMMAND", "CREATED", "STATUS", "NAMES"
             );
-            if all {
-                log::debug!("Listing all containers including stopped");
+            for s in states {
+                let short_id = if s.id.len() >= 12 { &s.id[..12] } else { &s.id };
+                println!(
+                    "{:<15} {:<20} {:<22} {:<15} {:<18} {:<15}",
+                    short_id,
+                    s.image,
+                    s.formatted_command(),
+                    s.created,
+                    s.formatted_status(),
+                    s.name
+                );
             }
             Ok(())
         }
 
         Commands::Logs { follow, container } => {
-            log::info!("Fetching logs for container '{container}' (follow={follow})");
-            Ok(())
+            alphen_runtime::read_container_logs(&container, follow)
         }
 
         Commands::Exec {
@@ -370,30 +379,54 @@ fn run_app(cli: Cli) -> Result<()> {
             container,
             command,
         } => {
-            log::info!(
-                "Exec into '{container}' (i={interactive}, t={tty}) command={:?}",
-                command
-            );
+            let exit_code = alphen_runtime::exec_container(&container, &command, interactive, tty)?;
+            if exit_code != 0 {
+                return Err(AlphenError::Runtime(format!(
+                    "Exec exited with status {exit_code}"
+                )));
+            }
             Ok(())
         }
 
-        Commands::Stop { container } => {
-            println!("Stopping container '{container}'");
-            Ok(())
-        }
+        Commands::Stop { container } => alphen_runtime::stop_container(&container, 10),
 
         Commands::Start { container } => {
-            println!("Starting container '{container}'");
+            let state = alphen_runtime::get_state(&container)?
+                .ok_or_else(|| AlphenError::Runtime(format!("No such container: '{container}'")))?;
+            let image_ref = ImageReference::parse(&state.image)?;
+            let store = ImageStore::new_default();
+            let config = ContainerConfig {
+                id: state.id.clone(),
+                image_ref,
+                command: state.command.clone(),
+                env: vec![],
+                workdir: None,
+                volumes: vec![],
+                tmpfs: vec![],
+                limits: alphen_runtime::ResourceLimits::default(),
+                read_only: false,
+                hostname: Some(state.name.clone()),
+                rm: false,
+                detach: true,
+            };
+            alphen_runtime::run_container(&config, &store)?;
+            println!("{}", state.id);
             Ok(())
         }
 
-        Commands::Rm { force, container } => {
-            println!("Removing container '{container}' (force={force})");
-            Ok(())
-        }
+        Commands::Rm { force, container } => alphen_runtime::rm_container(&container, force),
 
         Commands::Inspect { target } => {
             let store = ImageStore::new_default();
+            // 1. Try matching container state
+            if let Ok(Some(state)) = alphen_runtime::get_state(&target) {
+                let pretty = serde_json::to_string_pretty(&state)
+                    .map_err(|e| AlphenError::Config(format!("JSON error: {e}")))?;
+                println!("{pretty}");
+                return Ok(());
+            }
+
+            // 2. Try matching image
             if let Ok(image_ref) = ImageReference::parse(&target) {
                 if let Ok(Some(stored)) = store.get_image(&image_ref) {
                     let pretty = serde_json::to_string_pretty(&stored)
@@ -402,6 +435,7 @@ fn run_app(cli: Cli) -> Result<()> {
                     return Ok(());
                 }
             }
+
             println!("{{ \"target\": \"{target}\", \"status\": \"not_found\" }}");
             Ok(())
         }
